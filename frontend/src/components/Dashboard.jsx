@@ -3,7 +3,7 @@ import WeekBar from './WeekBar.jsx';
 import { formatSeconds } from '../api.js';
 import { ProjectIcon } from '../Icons.jsx';
 
-export default function Dashboard({ projects, weekStats, liveExtraSeconds, onSelect }) {
+export default function Dashboard({ projects, weekStats, liveExtraSeconds, dailyTargetSeconds, monthSeconds, yearSeconds, onSelect }) {
   const active = projects.filter((p) => p.status !== 'finished');
 
   const latest = [...projects].sort(
@@ -15,6 +15,7 @@ export default function Dashboard({ projects, weekStats, liveExtraSeconds, onSel
   )[0];
 
   const totalSeconds = projects.reduce((sum, p) => sum + p.live_total_seconds, 0);
+  const weekSeconds = weekStats.reduce((sum, d) => sum + d.seconds, 0) + liveExtraSeconds;
 
   const byProgress = [...active].sort((a, b) => b.progress - a.progress);
 
@@ -26,6 +27,18 @@ export default function Dashboard({ projects, weekStats, liveExtraSeconds, onSel
         <div className="stat-card">
           <span className="stat-card-label">Total work time</span>
           <span className="stat-card-value">{formatSeconds(totalSeconds)}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-card-label">This week</span>
+          <span className="stat-card-value">{formatSeconds(weekSeconds)}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-card-label">This month</span>
+          <span className="stat-card-value">{formatSeconds(monthSeconds + liveExtraSeconds)}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-card-label">This year</span>
+          <span className="stat-card-value">{formatSeconds(yearSeconds + liveExtraSeconds)}</span>
         </div>
         <div className="stat-card clickable" onClick={() => longest && onSelect(longest.id)}>
           <span className="stat-card-label">Longest worked on</span>
@@ -39,7 +52,7 @@ export default function Dashboard({ projects, weekStats, liveExtraSeconds, onSel
       </div>
 
       <div className="project-card">
-        <WeekBar days={weekStats} liveExtraSeconds={liveExtraSeconds} />
+        <WeekBar days={weekStats} liveExtraSeconds={liveExtraSeconds} dailyTargetSeconds={dailyTargetSeconds} />
       </div>
 
       <div className="project-card">

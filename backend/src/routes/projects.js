@@ -42,9 +42,13 @@ router.post('/', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, status, accumulated_seconds, progress, notes, client_date } = req.body;
+  const { name, status, accumulated_seconds, progress, notes, post_title, post_text, post_hashtags, drawing_data, client_date } = req.body;
   const clampedProgress = progress != null ? Math.max(0, Math.min(100, Math.round(progress))) : null;
   const notesValue = notes !== undefined ? notes : null;
+  const postTitleValue = post_title !== undefined ? post_title : null;
+  const postTextValue = post_text !== undefined ? post_text : null;
+  const postHashtagsValue = post_hashtags !== undefined ? post_hashtags : null;
+  const drawingDataValue = drawing_data !== undefined ? drawing_data : null;
 
   const client = await pool.connect();
   try {
@@ -66,8 +70,8 @@ router.patch('/:id', async (req, res) => {
     }
 
     const { rows } = await client.query(
-      `UPDATE projects SET name = COALESCE($1, name), status = COALESCE($2, status), accumulated_seconds = COALESCE($3, accumulated_seconds), progress = COALESCE($4, progress), notes = COALESCE($5, notes) WHERE id = $6 RETURNING *`,
-      [name?.trim() || null, status || null, accumulated_seconds != null ? Math.max(0, Math.round(accumulated_seconds)) : null, clampedProgress, notesValue, id]
+      `UPDATE projects SET name = COALESCE($1, name), status = COALESCE($2, status), accumulated_seconds = COALESCE($3, accumulated_seconds), progress = COALESCE($4, progress), notes = COALESCE($5, notes), post_title = COALESCE($6, post_title), post_text = COALESCE($7, post_text), post_hashtags = COALESCE($8, post_hashtags), drawing_data = COALESCE($9, drawing_data) WHERE id = $10 RETURNING *`,
+      [name?.trim() || null, status || null, accumulated_seconds != null ? Math.max(0, Math.round(accumulated_seconds)) : null, clampedProgress, notesValue, postTitleValue, postTextValue, postHashtagsValue, drawingDataValue, id]
     );
     if (rows.length === 0) {
       await client.query('ROLLBACK');

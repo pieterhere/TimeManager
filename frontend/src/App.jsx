@@ -2,25 +2,32 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Sidebar from './components/Sidebar.jsx';
 import ProjectBoard from './components/ProjectBoard.jsx';
 import Dashboard from './components/Dashboard.jsx';
+import Settings from './components/Settings.jsx';
 import { api } from './api.js';
 import { playChime, playQuarterBell } from './chime.js';
 import { requestNotificationPermission, notify } from './notify.js';
 
-const FOCUS_CHECK_INTERVAL_SECONDS = 60 * 60;
+const FOCUS_CHECK_INTERVAL_SECONDS = 30 * 60;
 const QUARTER_BELL_SECONDS = 15 * 60;
+const IDLE_CHECK_INTERVAL_SECONDS = 3 * 60 * 60;
 
 export default function App() {
   const [projects, setProjects] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [showDashboard, setShowDashboard] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState({});
   const [selectedProject, setSelectedProject] = useState(null);
   const [focusPrompt, setFocusPrompt] = useState(null);
   const [weekStats, setWeekStats] = useState([]);
+  const [statsSummary, setStatsSummary] = useState({ month_seconds: 0, year_seconds: 0 });
   const [activeTimer, setActiveTimer] = useState(null);
   const completing = useRef(new Set());
   const runningSecondsAccum = useRef(0);
   const nextFocusThreshold = useRef(FOCUS_CHECK_INTERVAL_SECONDS);
   const quarterBellState = useRef({ key: null, startedAt: null, lastMark: 0 });
+  const idleSecondsAccum = useRef(0);
+  const nextIdleThreshold = useRef(IDLE_CHECK_INTERVAL_SECONDS);
 
   const refreshList = useCallback(async () => {
     try {
@@ -47,8 +54,20 @@ export default function App() {
     }
   }, []);
 
+  const refreshStatsSummary = useCallback(async () => {
+    try {
+      setStatsSummary(await api.getStatsSummary());
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
   useEffect(() => {
     requestNotificationPermission();
+  }, []);
+
+  useEffect(() => {
+    api.getSettings().then(setSettings).catch((err) => console.error(err));
   }, []);
 
   useEffect(() => {
@@ -62,6 +81,12 @@ export default function App() {
     const interval = setInterval(refreshWeekStats, 30000);
     return () => clearInterval(interval);
   }, [refreshWeekStats]);
+
+  useEffect(() => {
+    refreshStatsSummary();
+    const interval = setInterval(refreshStatsSummary, 30000);
+    return () => clearInterval(interval);
+  }, [refreshStatsSummary]);
 
   useEffect(() => {
     if (!selectedId) {
@@ -89,6 +114,11 @@ export default function App() {
       setActiveTimer(active || null);
 
       if (active) {
+        // A timer is running, so the idle-nudge clock resets — it should
+        // only fire after a continuous stretch of nothing running.
+        idleSecondsAccum.current = 0;
+        nextIdleThreshold.current = IDLE_CHECK_INTERVAL_SECONDS;
+
         runningSecondsAccum.current += 1;
         if (runningSecondsAccum.current >= nextFocusThreshold.current) {
           nextFocusThreshold.current += FOCUS_CHECK_INTERVAL_SECONDS;
@@ -131,6 +161,14 @@ export default function App() {
           refreshWeekStats();
           if (selectedId) refreshSelected(selectedId);
         }
+      } else {
+        // Nothing running — nudge every few hours of continuous idle time
+        // so a forgotten/untracked work stretch doesn't go unnoticed.
+        idleSecondsAccum.current += 1;
+        if (idleSecondsAccum.current >= nextIdleThreshold.current) {
+          nextIdleThreshold.current += IDLE_CHECK_INTERVAL_SECONDS;
+          notify('What are you working on?', "No timer's running — start one if you're working on something.");
+        }
       }
     };
 
@@ -141,6 +179,7 @@ export default function App() {
 
   function handleSelectProject(id) {
     setShowDashboard(false);
+    setShowSettings(false);
     setSelectedId(id);
   }
 
@@ -148,7 +187,13 @@ export default function App() {
     const p = await api.createProject(name, 'current');
     await refreshList();
     setShowDashboard(false);
+    setShowSettings(false);
     setSelectedId(p.id);
+  }
+
+  async function handleSaveSettings(patch) {
+    const updated = await api.updateSettings(patch);
+    setSettings(updated);
   }
 
   async function handleUpdateProject(id, patch) {
@@ -183,6 +228,7 @@ export default function App() {
     await refreshSelected(selectedId);
     await refreshList();
     await refreshWeekStats();
+    await refreshStatsSummary();
   }
 
   async function handleEditTaskTime(id, seconds) {
@@ -197,6 +243,11 @@ export default function App() {
     await refreshList();
   }
 
+  async function handleReorderTasks(orderedIds) {
+    await api.reorderTasks(selectedId, orderedIds);
+    await refreshSelected(selectedId);
+  }
+
   async function handleRenameTask(id, name) {
     await api.updateTask(id, { name });
     await refreshSelected(selectedId);
@@ -207,7 +258,10 @@ export default function App() {
     await refreshSelected(selectedId);
     await refreshList();
     await refreshWeekStats();
+    await refreshStatsSummary();
   }
+
+  const dailyTargetSeconds = Number(settings.daily_minimum_hours || 0) * 3600;
 
   return (
     <div className="app">
@@ -219,13 +273,20 @@ export default function App() {
         onUpdate={handleUpdateProject}
         onDelete={handleDeleteProject}
         onReorder={handleReorderProjects}
-        onHome={() => setShowDashboard(true)}
+        onHome={() => { setShowDashboard(true); setShowSettings(false); }}
+        onSettings={() => { setShowSettings(true); setShowDashboard(false); }}
+        runningProjectId={activeTimer ? activeTimer.project_id : null}
       />
-      {showDashboard ? (
+      {showSettings ? (
+        <Settings settings={settings} onSave={handleSaveSettings} />
+      ) : showDashboard ? (
         <Dashboard
           projects={projects}
           weekStats={weekStats}
           liveExtraSeconds={activeTimer ? activeTimer.run_elapsed_seconds : 0}
+          dailyTargetSeconds={dailyTargetSeconds}
+          monthSeconds={statsSummary.month_seconds}
+          yearSeconds={statsSummary.year_seconds}
           onSelect={handleSelectProject}
         />
       ) : (
@@ -238,8 +299,11 @@ export default function App() {
           onAddTask={handleAddTask}
           onRenameTask={handleRenameTask}
           onToggleTaskActive={handleToggleTaskActive}
+          onReorderTasks={handleReorderTasks}
           weekStats={weekStats}
           liveExtraSeconds={activeTimer ? activeTimer.run_elapsed_seconds : 0}
+          dailyTargetSeconds={dailyTargetSeconds}
+          defaultHashtags={settings.default_hashtags || ''}
         />
       )}
       {focusPrompt && (

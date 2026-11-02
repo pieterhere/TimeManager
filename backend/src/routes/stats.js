@@ -37,4 +37,30 @@ router.get('/week', async (req, res) => {
   res.json(days);
 });
 
+// Month-to-date and year-to-date totals, anchored to the caller's local
+// "today" (same convention as /week) so the boundaries match the user's
+// own calendar, not the server's. Today's own seconds come from
+// daily_activity same as everywhere else — the frontend adds the live
+// elapsed of whatever timer is currently running on top, same as the week bar.
+router.get('/summary', async (req, res) => {
+  const today = /^\d{4}-\d{2}-\d{2}$/.test(req.query.today || '') ? req.query.today : todayUTC();
+  const [y, m] = today.split('-').map(Number);
+  const monthStart = `${y}-${String(m).padStart(2, '0')}-01`;
+  const yearStart = `${y}-01-01`;
+
+  const { rows } = await pool.query(
+    `SELECT
+       COALESCE(SUM(seconds) FILTER (WHERE date >= $1::date), 0) AS month_seconds,
+       COALESCE(SUM(seconds) FILTER (WHERE date >= $2::date), 0) AS year_seconds
+     FROM daily_activity
+     WHERE date <= $3::date`,
+    [monthStart, yearStart, today]
+  );
+
+  res.json({
+    month_seconds: Number(rows[0].month_seconds),
+    year_seconds: Number(rows[0].year_seconds),
+  });
+});
+
 export default router;

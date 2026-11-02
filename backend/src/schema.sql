@@ -5,6 +5,9 @@ CREATE TABLE IF NOT EXISTS projects (
   position INTEGER NOT NULL DEFAULT 0,
   progress INTEGER NOT NULL DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
   notes TEXT NOT NULL DEFAULT '',
+  post_title TEXT NOT NULL DEFAULT '',
+  post_text TEXT NOT NULL DEFAULT '',
+  post_hashtags TEXT NOT NULL DEFAULT '',
   started_at TIMESTAMPTZ,
   accumulated_seconds BIGINT NOT NULL DEFAULT 0,
   mode TEXT CHECK (mode IN ('stopwatch', 'countdown')),
@@ -28,6 +31,10 @@ CREATE TABLE IF NOT EXISTS tasks (
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT true;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS progress INTEGER NOT NULL DEFAULT 0 CHECK (progress >= 0 AND progress <= 100);
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS notes TEXT NOT NULL DEFAULT '';
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS post_title TEXT NOT NULL DEFAULT '';
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS post_text TEXT NOT NULL DEFAULT '';
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS post_hashtags TEXT NOT NULL DEFAULT '';
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS drawing_data TEXT NOT NULL DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id);
 
@@ -36,4 +43,11 @@ CREATE INDEX IF NOT EXISTS idx_tasks_project_id ON tasks(project_id);
 CREATE TABLE IF NOT EXISTS daily_activity (
   date DATE PRIMARY KEY,
   seconds BIGINT NOT NULL DEFAULT 0
+);
+
+-- App-wide settings, key/value. Currently just the default hashtag
+-- template prefilled into a new project's post composer.
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL DEFAULT ''
 );

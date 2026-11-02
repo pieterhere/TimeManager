@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { formatSeconds } from '../api.js';
-import { ProjectIcon, EditIcon, DeleteIcon, ChevronIcon } from '../Icons.jsx';
+import { ProjectIcon, EditIcon, DeleteIcon, ChevronIcon, GearIcon } from '../Icons.jsx';
 
 const GROUPS = [
   { key: 'current', label: 'Current' },
@@ -21,7 +21,7 @@ function loadCollapsed() {
   }
 }
 
-function ProjectRow({ project, selected, onSelect, onUpdate, onDelete, onDragStart, onDragEnd, onDragOverRow, onDropRow, dragOver }) {
+function ProjectRow({ project, selected, running, onSelect, onUpdate, onDelete, onDragStart, onDragEnd, onDragOverRow, onDropRow, dragOver }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(project.name);
   const [status, setStatus] = useState(project.status);
@@ -54,7 +54,7 @@ function ProjectRow({ project, selected, onSelect, onUpdate, onDelete, onDragSta
 
   return (
     <div
-      className={`project-row${selected ? ' selected' : ''}${project.status === 'finished' ? ' finished' : ''}${dragOver ? ' drag-over-row' : ''}`}
+      className={`project-row${selected ? ' selected' : ''}${project.status === 'finished' ? ' finished' : ''}${dragOver ? ' drag-over-row' : ''}${running ? ' running' : ''}`}
       onClick={onSelect}
       draggable
       onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(project.id)); onDragStart(project.id); }}
@@ -64,7 +64,10 @@ function ProjectRow({ project, selected, onSelect, onUpdate, onDelete, onDragSta
     >
       <ProjectIcon id={project.id} className="dither-icon" />
       <div className="project-row-main">
-        <span className="project-row-name">{project.name}</span>
+        <span className="project-row-name">
+          {running && <span className="running-dot" />}
+          {project.name}
+        </span>
         <span className="project-row-time">{formatSeconds(project.live_total_seconds)}</span>
         <div className="project-row-progress-track">
           <div className="project-row-progress-fill" style={{ width: `${project.progress}%` }} />
@@ -84,7 +87,7 @@ function ProjectRow({ project, selected, onSelect, onUpdate, onDelete, onDragSta
   );
 }
 
-export default function Sidebar({ projects, selectedId, onSelect, onCreate, onUpdate, onDelete, onReorder, onHome }) {
+export default function Sidebar({ projects, selectedId, onSelect, onCreate, onUpdate, onDelete, onReorder, onHome, onSettings, runningProjectId }) {
   const [newName, setNewName] = useState('');
   const [draggingId, setDraggingId] = useState(null);
   const [dragOverGroup, setDragOverGroup] = useState(null);
@@ -144,7 +147,12 @@ export default function Sidebar({ projects, selectedId, onSelect, onCreate, onUp
 
   return (
     <div className="sidebar">
-      <h1 className="logo-home" onClick={onHome} title="Overview"><span className="logo-dither">Time Manager</span></h1>
+      <div className="sidebar-titlebar">
+        <h1 className="logo-home" onClick={onHome} title="Overview"><span className="logo-dither">Time Manager</span></h1>
+        <button className="icon-btn" onClick={onSettings} title="Settings">
+          <GearIcon className="btn-icon" />
+        </button>
+      </div>
       <form className="add-project-form" onSubmit={submitNew}>
         <input
           placeholder="New project"
@@ -184,6 +192,7 @@ export default function Sidebar({ projects, selectedId, onSelect, onCreate, onUp
                     key={p.id}
                     project={p}
                     selected={p.id === selectedId}
+                    running={p.id === runningProjectId}
                     onSelect={() => onSelect(p.id)}
                     onUpdate={(patch) => onUpdate(p.id, patch)}
                     onDelete={() => onDelete(p.id)}

@@ -71,8 +71,40 @@ export function RestoreIcon({ className }) {
   );
 }
 
+export function GearIcon({ className }) {
+  return (
+    <svg className={className} {...svgProps}>
+      <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z M19 12a7 7 0 0 0-.2-1.6l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.8-1.6L13.3 2h-2.6l-.4 2.9a7 7 0 0 0-2.8 1.6l-2.3-1-2 3.4 2 1.5a7 7 0 0 0 0 3.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.8 1.6l.4 2.9h2.6l.4-2.9a7 7 0 0 0 2.8-1.6l2.3 1 2-3.4-2-1.5c.13-.52.2-1.06.2-1.6Z" />
+    </svg>
+  );
+}
+
 export function ChevronIcon({ className }) {
   return (
     <svg className={className} {...svgProps}><path d="M9 6l6 6-6 6" /></svg>
+  );
+}
+
+export function PenIcon({ className }) {
+  return (
+    <svg className={className} {...svgProps}><path d="M4 20l4-1 10-10-3-3L5 16l-1 4Z M13 6l3 3" /></svg>
+  );
+}
+
+export function EraserIcon({ className }) {
+  return (
+    <svg className={className} {...svgProps}><path d="M19 20H9l-5-5a2 2 0 0 1 0-2.8L13 3l8 8-7 7 M9 20l-4-4" /></svg>
+  );
+}
+
+export function UndoIcon({ className }) {
+  return (
+    <svg className={className} {...svgProps}><path d="M3 11a9 9 0 1 1 2.6 6.4 M3 17v-6h6" /></svg>
+  );
+}
+
+export function ClearAllIcon({ className }) {
+  return (
+    <svg className={className} {...svgProps}><path d="M5 7h14 M9 7V4h6v3 M7 7l1 13h8l1-13" /></svg>
   );
 }

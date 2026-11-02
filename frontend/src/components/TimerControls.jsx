@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PlayIcon, PauseIcon } from '../Icons.jsx';
-import { parseHMS } from '../api.js';
+import { parseHMS, liveSecondsNow, formatSeconds } from '../api.js';
 import { playStartSound, playStopSound } from '../chime.js';
 
 const PRESETS = [
@@ -12,7 +12,19 @@ const PRESETS = [
 export default function TimerControls({ entity, liveSeconds, isRunning, onStart, onStop, onEditTime, disabled }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(liveSeconds);
+  const [tick, setTick] = useState(0);
   const activePreset = isRunning && entity.mode === 'countdown' ? entity.preset_seconds : null;
+
+  // Ticks the displayed time every second from entity.started_at directly,
+  // so it keeps counting smoothly regardless of how often the parent's
+  // poll happens to land (adding a task, slow network, etc. never stalls it).
+  useEffect(() => {
+    if (!isRunning) return;
+    const interval = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, [isRunning, entity.started_at]);
+
+  const display = isRunning ? formatSeconds(liveSecondsNow(entity)) : liveSeconds;
 
   function openEdit() {
     if (isRunning || !onEditTime) return;
@@ -80,7 +92,7 @@ export default function TimerControls({ entity, liveSeconds, isRunning, onStart,
           onClick={openEdit}
           title={!isRunning && onEditTime ? 'Click to edit' : undefined}
         >
-          {liveSeconds}
+          {display}
         </span>
       )}
     </div>

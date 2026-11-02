@@ -78,6 +78,29 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
+// Bulk-reorder tasks within a project: body is { project_id, order: [id, ...] }
+// in desired display order. Mirrors projects/reorder.
+router.post('/reorder', async (req, res) => {
+  const { project_id, order } = req.body;
+  if (!project_id || !Array.isArray(order) || order.some((id) => !Number.isInteger(id))) {
+    return res.status(400).json({ error: 'project_id and order (array of task ids) required' });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (let i = 0; i < order.length; i++) {
+      await client.query('UPDATE tasks SET position = $1 WHERE id = $2 AND project_id = $3', [i, order[i], project_id]);
+    }
+    await client.query('COMMIT');
+    res.status(204).end();
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
 router.delete('/:id', async (req, res) => {
   await pool.query('DELETE FROM tasks WHERE id = $1', [req.params.id]);
   res.status(204).end();

@@ -31,6 +31,7 @@ export const api = {
   createTask: (project_id, name) => request('/tasks', { method: 'POST', body: JSON.stringify({ project_id, name }) }),
   updateTask: (id, patch) => request(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ ...patch, client_date: localDateKey() }) }),
   deleteTask: (id) => request(`/tasks/${id}`, { method: 'DELETE' }),
+  reorderTasks: (project_id, order) => request('/tasks/reorder', { method: 'POST', body: JSON.stringify({ project_id, order }) }),
 
   startTimer: (type, id, mode, preset_seconds) =>
     request(`/timers/${type}/${id}/start`, { method: 'POST', body: JSON.stringify({ mode, preset_seconds, client_date: localDateKey() }) }),
@@ -38,7 +39,25 @@ export const api = {
   getActiveTimer: () => request('/timers/active'),
 
   getWeekStats: () => request(`/stats/week?today=${localDateKey()}`),
+  getStatsSummary: () => request(`/stats/summary?today=${localDateKey()}`),
+
+  getSettings: () => request('/settings'),
+  updateSettings: (patch) => request('/settings', { method: 'PUT', body: JSON.stringify(patch) }),
 };
+
+// Live elapsed seconds for a project/task row, computed purely from its
+// accumulated_seconds + started_at — independent of poll timing, so a
+// ticking display never stalls between refetches (or after any other
+// state change) waiting on the next server round-trip.
+export function liveSecondsNow(entity) {
+  const base = Number(entity.accumulated_seconds);
+  if (!entity.started_at) return base;
+  const rawElapsed = (Date.now() - new Date(entity.started_at).getTime()) / 1000;
+  if (entity.mode === 'countdown' && entity.preset_seconds != null) {
+    return base + Math.min(rawElapsed, entity.preset_seconds);
+  }
+  return base + rawElapsed;
+}
 
 export function formatSeconds(totalSeconds) {
   const s = Math.max(0, Math.round(totalSeconds));
@@ -46,8 +65,7 @@ export function formatSeconds(totalSeconds) {
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
   const pad = (n) => String(n).padStart(2, '0');
-  if (h > 0) return `${h}:${pad(m)}:${pad(sec)}`;
-  return `${m}:${pad(sec)}`;
+  return `${h}:${pad(m)}:${pad(sec)}`;
 }
 
 // Accepts "H:MM:SS", "MM:SS", or a bare number of minutes.
