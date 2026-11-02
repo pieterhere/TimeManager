@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import TimerControls from './TimerControls.jsx';
 import TaskCard from './TaskCard.jsx';
 import WeekBar from './WeekBar.jsx';
 import DrawingPad from './DrawingPad.jsx';
+import NotesView from './NotesView.jsx';
 import { formatSeconds, liveSecondsNow } from '../api.js';
 import { ProjectIcon } from '../Icons.jsx';
 
@@ -37,11 +38,18 @@ export default function ProjectBoard({
   const [copied, setCopied] = useState(false);
   const [draggingTaskId, setDraggingTaskId] = useState(null);
   const [dragOverTaskId, setDragOverTaskId] = useState(null);
+  const [notesEditing, setNotesEditing] = useState(false);
   const [, setTick] = useState(0);
+  const notesTextareaRef = useRef(null);
+
+  useEffect(() => {
+    if (notesEditing) notesTextareaRef.current?.focus();
+  }, [notesEditing]);
 
   useEffect(() => {
     setLiveProgress(null);
     setNotesDraft(project?.notes || '');
+    setNotesEditing(false);
     setPostTitle(project?.post_title || '');
     setPostText(project?.post_text || '');
     setPostHashtags(project?.post_hashtags || defaultHashtags || '');
@@ -183,13 +191,25 @@ export default function ProjectBoard({
           <div className="notes-card">
             <div className="notes-col">
               <span className="progress-edit-label">Notes</span>
-              <textarea
-                className="notes-textarea notes-textarea-main"
-                placeholder="Add notes for this project..."
-                value={notesDraft}
-                onChange={(e) => setNotesDraft(e.target.value)}
-                onBlur={() => { if (notesDraft !== (project.notes || '')) onUpdateProject({ notes: notesDraft }); }}
-              />
+              {notesEditing ? (
+                <textarea
+                  ref={notesTextareaRef}
+                  className="notes-textarea notes-textarea-main"
+                  placeholder="Add notes for this project... (* item for a bullet list, indent with 2 spaces for sub-items)"
+                  value={notesDraft}
+                  onChange={(e) => setNotesDraft(e.target.value)}
+                  onBlur={() => {
+                    if (notesDraft !== (project.notes || '')) onUpdateProject({ notes: notesDraft });
+                    setNotesEditing(false);
+                  }}
+                />
+              ) : (
+                <NotesView
+                  text={notesDraft}
+                  placeholder="Add notes for this project... (* item for a bullet list)"
+                  onClick={() => setNotesEditing(true)}
+                />
+              )}
             </div>
             <div className="notes-col">
               <span className="progress-edit-label">Post composer</span>

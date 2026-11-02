@@ -804,6 +804,39 @@ input, select {
 .notes-textarea-main {
   flex: 1;
 }
+.notes-view {
+  flex: 1;
+  min-height: 90px;
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: text;
+  white-space: pre-wrap;
+}
+.notes-view:hover {
+  border-color: var(--accent-dim);
+}
+.notes-view-placeholder {
+  color: var(--text-dim);
+  margin: 0;
+}
+.notes-view p {
+  margin: 0 0 4px;
+}
+.notes-view p:last-child {
+  margin-bottom: 0;
+}
+.notes-view ul {
+  margin: 0 0 4px;
+  padding-left: 20px;
+}
+.notes-view li {
+  margin: 2px 0;
+}
 .post-field {
   width: 100%;
 }
